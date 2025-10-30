@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análise Competitiva - Contabilidade Digital BR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chosen Palette: Minimalist Neutral -->
+    <!-- Application Structure Plan: A estrutura do SPA foi desenhada para um Product Manager, priorizando a tomada de decisão. Em vez de um relatório linear, o app usa uma navegação por abas temáticas: [Visão Geral, Comparativo de Features, Voz do Cliente, Análise SWOT, Recomendações]. A "Visão Geral" age como um dashboard com o Executive Summary e um gráfico-bolha de posicionamento de mercado. O "Comparativo" abandona uma tabela estática por abas interativas que atualizam um gráfico radar e uma lista de features, permitindo foco em um concorrente por vez. A "Voz do Cliente" transforma citações estáticas em uma ferramenta filtrável por concorrente, com um gráfico de resumo. "SWOT" e "Recomendações" usam layouts limpos de abas e cartões para informações estratégicas. Esta arquitetura é focada em tarefas (Visão Rápida, Comparação Profunda, Análise de Sentimento, Ação Estratégica), tornando a exploração dos dados mais rápida e intuitiva. -->
+    <!-- Visualization & Content Choices: [Info: Síntese de Posição de Mercado -> Goal: Informar -> Viz: Gráfico de Bolha (Chart.js/Canvas) -> Interaction: Hover Tooltip -> Justification: Resumo visual da paisagem competitiva / Lib: Chart.js], [Info: Tabela de Feature Mapping -> Goal: Comparar -> Viz: Gráfico Radar (Chart.js/Canvas) + Lista HTML Dinâmica -> Interaction: Abas de Concorrentes -> Justification: Comparação visual direta da "forma" do produto de cada player vs. uma tabela densa / Lib: Chart.js], [Info: Clusters de Reclamações -> Goal: Organizar/Informar -> Viz: Gráfico de Barras Horizontais (Chart.js/Canvas) -> Interaction: Filtro Dropdown (atualiza cards HTML) -> Justification: Identificação rápida dos temas mais problemáticos / Lib: Chart.js], [Info: SWOT, Roadmap, Hipóteses -> Goal: Organizar/Informar -> Viz: Layouts de Grid/Cards (HTML/Tailwind) -> Interaction: Abas (SWOT) -> Justification: Apresentação clara de texto estratégico denso, sem necessidade de gráfico.] -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .nav-link {
+            @apply px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-indigo-600 hover:bg-gray-100 cursor-pointer;
+        }
+        .nav-link.active {
+            @apply text-indigo-600 bg-indigo-50 font-semibold;
+        }
+        .tab-link {
+            @apply px-4 py-2 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:border-gray-300 hover:text-gray-800 cursor-pointer;
+        }
+        .tab-link.active {
+            @apply text-indigo-600 border-indigo-500;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+            max-width: 600px;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        section {
+            display: none;
+        }
+        section.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-700">
+
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0 flex items-center">
+                    <span class="text-xl font-bold text-indigo-600">Análise Competitiva</span>
+                </div>
+                <div class="hidden sm:ml-6 sm:flex sm:space-x-4" id="main-nav">
+                    <a class="nav-link active" data-section="visao-geral">Visão Geral</a>
+                    <a class="nav-link" data-section="features">Comparativo de Features</a>
+                    <a class="nav-link" data-section="sentimento">Voz do Cliente</a>
+                    <a class="nav-link" data-section="swot">Análise SWOT</a>
+                    <a class="nav-link" data-section="recomendacoes">Recomendações</a>
+                </div>
+            </div>
+        </nav>
+        <div class="sm:hidden border-t border-gray-200">
+             <div class="flex space-x-1 overflow-x-auto p-2" id="main-nav-mobile">
+                <a class="nav-link active" data-section="visao-geral">Visão Geral</a>
+                <a class="nav-link" data-section="features">Features</a>
+                <a class="nav-link" data-section="sentimento">Clientes</a>
+                <a class="nav-link" data-section="swot">SWOT</a>
+                <a class="nav-link" data-section="recomendacoes">Ações</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+
+        <!-- Seção 1: Visão Geral (Dashboard) -->
+        <section id="section-visao-geral" class="active space-y-6">
+            <header>
+                <h2 class="text-2xl font-bold text-gray-900">Visão Geral do Mercado</h2>
+                <p class="mt-1 text-gray-600">Um dashboard com o resumo executivo, prioridades estratégicas e o posicionamento competitivo dos players de contabilidade digital no Brasil.</p>
+            </header>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Executive Summary</h3>
+                    <div class="space-y-3 text-gray-600 text-sm">
+                        <p>A Contabilizei se mantém como líder de mercado em volume e reconhecimento de marca, tendo estabelecido o padrão para a contabilidade digital no Brasil. Sua principal força reside na base de clientes massiva e na eficiência do funil de aquisição para abertura de empresas.</p>
+                        <p>No entanto, a empresa enfrenta vulnerabilidades crescentes: o atendimento ao cliente em escala demonstra sinais de desgaste (vide Reclame Aqui), e a plataforma começa a apresentar dívida técnica, resultando em bugs fiscais relatados por usuários. A pressão por margem em um modelo de baixo custo limita o investimento em suporte premium.</p>
+                        <p>Concorrentes como a Agilize emergem como "fast followers" ágeis, com forte reputação em atendimento (nota 9.0 no RA) e uma plataforma robusta, mirando a base de clientes insatisfeita da Contabilizei. A ContaAzul atua em um segmento distinto (ERP-first), representando uma ameaça de "morte por mil cortes" ao integrar contabilidade ao seu sistema de gestão, fidelizando clientes com maior LTV.</p>
+                        <p>A oportunidade estratégica imediata para a Contabilizei é dupla: 1) Investir agressivamente em automação e IA para resolver o gargalo do suporte N1 e 2) Desenvolver um "tier Pro" de serviços com maior valor agregado (analytics, BPO financeiro) para clientes maiores, fugindo da comoditização.</p>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Top 3 Prioridades Imediatas</h3>
+                    <ul class="space-y-3 text-sm">
+                        <li class="p-3 bg-indigo-50 rounded-md">
+                            <span class="font-semibold text-indigo-700">1. Onboarding via WhatsApp + OCR</span>
+                            <p class="text-gray-600">Reduzir TTV da primeira NF, melhorando a experiência inicial.</p>
+                            <span class="text-xs font-medium text-indigo-500">Impacto: Alto | Complexidade: Média</span>
+                        </li>
+                        <li class="p-3 bg-indigo-50 rounded-md">
+                            <span class="font-semibold text-indigo-700">2. Chatbot de IA (Suporte N1)</span>
+                            <p class="text-gray-600">Resolver dúvidas fiscais comuns e bugs de plataforma, desafogando o suporte humano.</p>
+                             <span class="text-xs font-medium text-indigo-500">Impacto: Alto | Complexidade: Alta</span>
+                        </li>
+                         <li class="p-3 bg-indigo-50 rounded-md">
+                            <span class="font-semibold text-indigo-700">3. Módulo "Pro" de Analytics</span>
+                            <p class="text-gray-600">Criar upsell com dashboards de planejamento tributário simples para ME/EPP.</p>
+                             <span class="text-xs font-medium text-indigo-500">Impacto: Médio | Complexidade: Alta</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Mapa de Posicionamento Competitivo</h3>
+                <p class="text-sm text-gray-600 mb-4">Uma visão sintética do mercado baseada na maturidade da plataforma (eixo X) versus o sentimento público do cliente (eixo Y). O tamanho da bolha representa o tráfego orgânico estimado (proxy de market share).</p>
+                <div class="chart-container h-80 md:h-96">
+                    <canvas id="marketPosChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Seção 2: Comparativo de Features -->
+        <section id="section-features" class="space-y-6">
+            <header>
+                <h2 class="text-2xl font-bold text-gray-900">Comparativo de Features</h2>
+                <p class="mt-1 text-gray-600">Explore as funcionalidades, preços e diferenciais de cada concorrente. Selecione um player para ver seu perfil de features e compará-lo visualmente com os demais.</p>
+            </header>
+
+            <div class="border-b border-gray-200 bg-white shadow-sm rounded-t-lg">
+                <nav class="-mb-px flex space-x-4 overflow-x-auto p-2" id="feature-tabs" aria-label="Tabs">
+                    <a class="tab-link active" data-competitor="contabilizei">Contabilizei</a>
+                    <a class="tab-link" data-competitor="agilize">Agilize</a>
+                    <a class="tab-link" data-competitor="conube">Conube</a>
+                    <a class="tab-link" data-competitor="contaazul">ContaAzul</a>
+                    <a class="tab-link" data-competitor="meucontador">Meu Contador Online</a>
+                    <a class="tab-link" data-competitor="contdigital">ContDigital</a>
+                </nav>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4" id="feature-title">Perfil de Features: Contabilizei</h3>
+                    <div id="feature-details-list" class="space-y-3">
+                        <!-- Conteúdo dinâmico será inserido aqui pelo JS -->
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                     <h3 class="text-lg font-semibold text-gray-900 mb-4">Radar de Maturidade de Features</h3>
+                     <p class="text-sm text-gray-600 mb-4">Comparação visual da maturidade das features do player selecionado (azul) contra a linha de base do líder de mercado (cinza).</p>
+                    <div class="chart-container h-80 md:h-96">
+                        <canvas id="featureRadarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Seção 3: Voz do Cliente -->
+        <section id="section-sentimento" class="space-y-6">
+            <header>
+                <h2 class="text-2xl font-bold text-gray-900">Voz do Cliente (Análise de Sentimento)</h2>
+                <p class="mt-1 text-gray-600">O que os clientes estão dizendo nas redes sociais e no Reclame Aqui? Analisamos os temas recorrentes de elogios e reclamações.</p>
+            </header>
+
+            <div class="flex justify-between items-center">
+                 <h3 class="text-lg font-semibold text-gray-900">Filtrar Análise por Concorrente:</h3>
+                <select id="sentiment-filter" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <option value="todos">Todos os Concorrentes</option>
+                    <option value="contabilizei">Contabilizei</option>
+                    <option value="agilize">Agilize</option>
+                    <option value="conube">Conube</option>
+                    <option value="contaazul">ContaAzul</option>
+                </select>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                 <h3 class="text-lg font-semibold text-gray-900 mb-4">Temas Recorrentes de Reclamações (Geral)</h3>
+                 <p class="text-sm text-gray-600 mb-4">Principais clusters de problemas mencionados publicamente pelos usuários de todas as plataformas analisadas.</p>
+                 <div class="chart-container h-80 md:h-96">
+                    <canvas id="sentimentBarChart"></canvas>
+                 </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h3 class="text-xl font-semibold text-green-600 mb-4">👍 Principais Elogios</h3>
+                    <div id="sentiment-cards-elogios" class="space-y-4">
+                        <!-- Conteúdo dinâmico será inserido aqui pelo JS -->
+                        <p class="text-sm text-gray-500">Selecione um filtro para ver os elogios...</p>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h3 class="text-xl font-semibold text-red-600 mb-4">👎 Principais Reclamações</h3>
+                    <div id="sentiment-cards-reclama-es" class="space-y-4">
+                         <!-- Conteúdo dinâmico será inserido aqui pelo JS -->
+                         <p class="text-sm text-gray-500">Selecione um filtro para ver as reclamações...</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Seção 4: Análise SWOT -->
+        <section id="section-swot" class="space-y-6">
+            <header>
+                <h2 class="text-2xl font-bold text-gray-900">Análise SWOT Comparativa</h2>
+                <p class="mt-1 text-gray-600">Análise de Forças, Fraquezas, Oportunidades e Ameaças para a Contabilizei e seus concorrentes mais relevantes.</p>
+            </header>
+
+            <div class="border-b border-gray-200 bg-white shadow-sm rounded-t-lg">
+                <nav class="-mb-px flex space-x-4 overflow-x-auto p-2" id="swot-tabs" aria-label="Tabs">
+                    <a class="tab-link active" data-competitor="contabilizei">Contabilizei (Detalhado)</a>
+                    <a class="tab-link" data-competitor="agilize">Agilize</a>
+                    <a class="tab-link" data-competitor="contaazul">ContaAzul</a>
+                </nav>
+            </div>
+            
+            <div id="swot-content-container">
+                <!-- SWOT Contabilizei (Default) -->
+                <div id="swot-contabilizei" class="swot-content active bg-white p-6 rounded-b-lg shadow-sm border border-gray-200">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="p-4 bg-green-50 rounded-lg">
+                            <h4 class="font-bold text-lg text-green-800">Forças (Strengths)</h4>
+                            <ul class="list-disc list-inside mt-2 space-y-1 text-sm text-gray-700">
+                                <li>Marca dominante e maior "top of mind" do setor.</li>
+                                <li>Funil de aquisição (abertura de empresa) altamente otimizado e escalável.</li>
+                                <li>Preço agressivo que define o piso do mercado.</li>
+                                <li>Vasto volume de dados de clientes para potencial uso em IA.</li>
+                                <li>Ecossistema de parceiros (Conta PJ, etc.) em desenvolvimento.</li>
+                            </ul>
+                        </div>
+                        <div class="p-4 bg-red-50 rounded-lg">
+                            <h4 class="font-bold text-lg text-red-800">Fraquezas (Weaknesses)</h4>
+                            <ul class="list-disc list-inside mt-2 space-y-1 text-sm text-gray-700">
+                                <li>Atendimento ao cliente N1/N2 lento e com baixa reputação (alto volume de RA).</li>
+                                <li>Dependência de um modelo de baixo LTV, vulnerável a "churn and burn".</li>
+                                <li>Relatos de bugs fiscais e dívida técnica na plataforma legada.</li>
+                                <li>Baixa percepção de valor além da "geração de guia".</li>
+                                <li>Dificuldade em reter clientes que crescem e demandam serviços "Pro".</li>
+                            </ul>
+                        </div>
+                        <div class="p-4 bg-blue-50 rounded-lg">
+                            <h4 class="font-bold text-lg text-blue-800">Oportunidades (Opportunities)</h4>
+                            <ul class="list-disc list-inside mt-2 space-y-1 text-sm text-gray-700">
+                                <li>Uso de IA para automação de suporte N1 e N2 (redução de Custo de Servir).</li>
+                                <li>Criação de "Tier Pro" (BPO financeiro, analytics) para upsell na base.</li>
+                                <li>Expansão do marketplace financeiro (crédito, antecipação).</li>
+                                <li>Ataque ao "middle market" (empresas Simples/Lucro Presumido maiores).</li>
+                                <li>Oferta de planejamento tributário preditivo como diferencial.</li>
+                            </ul>
+                        </div>
+                        <div class="p-4 bg-yellow-50 rounded-lg">
+                            <h4 class="font-bold text-lg text-yellow-800">Ameaças (Threats)</h4>
+                            <ul class="list-disc list-inside mt-2 space-y-1 text-sm text-gray-700">
+                                <li>"Fast followers" (Agilize) com melhor atendimento roubando base premium.</li>
+                                <li>Players de ERP (ContaAzul) integrando contabilidade, criando "lock-in".</li>
+                                <li>Mudanças regulatórias (Reforma Tributária, eSocial) que exigem P&D rápido.</li>
+                                <li>Comoditização total do serviço de "gerar guia".</li>
+                                <li>Guerra de preços insustentável com players menores.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SWOT Agilize -->
+                <div id="swot-agilize" class="swot-content hidden bg-white p-6 rounded-b-lg shadow-sm border border-gray-200">
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="p-4 bg-green-50 rounded-lg">
+                            <h4 class="font-bold text-lg text-green-800">Forças</h4>
+                            <ul class="list-disc list-inside mt-2 space-y-1 text-sm text-gray-700">
+                                <li>Excelente reputação de atendimento (WhatsApp) e nota alta no RA (9.0+).</li>
+                                <li>Plataforma tecnologicamente ágil e estável.</li>
+                                <li>Foco claro no segmento de PJs de serviço (médicos, devs, etc).</li>
+                            </ul>
+                        </div>
+                        <div class="p-4 bg-red-50 rounded-lg">
+                            <h4 class="font-bold text-lg text-red-800">Fraquezas</h4>
+                            <ul class="list-disc list-inside mt-2 space-y-1 text-sm text-gray-700">
+                                <li>Reconhecimento de marca significativamente menor que Contabilizei.</li>
+                                <li>Preço ligeiramente superior, perdendo na "briga de fundo de funil".</li>
+                                <li>Menor escala para negociar parcerias financeiras.</li>
+                            </ul>
+                        </div>
+                        <div class="p-4 bg-blue-50 rounded-lg">
+                            <h4 class="font-bold text-lg text-blue-800">Oportunidades</h4>
+                            <ul class="list-disc list-inside mt-2 space-y-1 text-sm text-gray-700">
+                                <li>Capturar ativamente clientes insatisfeitos com o suporte da Contabilizei.</li>
+                                <li>Explorar nichos de PJ "premium" que pagam por atendimento.</li>
+                                <li>Uso da IA para manter a qualidade do suporte em escala.</li>
+                            </ul>
+                        </div>
+                        <div class="p-4 bg-yellow-50 rounded-lg">
+                            <h4 class="font-bold text-lg text-yellow-800">Ameaças</h4>
+                            <ul class="list-disc list-inside mt-2 space-y-1 text-sm text-gray-700">
+                                <li>Guerra de preços iniciada pela Contabilizei.</li>
+                                <li>Dificuldade de escalar o "atendimento humano" que é seu diferencial.</li>
+                                <li>Entrada de novos players de nicho.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SWOT ContaAzul -->
+                <div id="swot-contaazul" class="swot-content hidden bg-white p-6 rounded-b-lg shadow-sm border border-gray-200">
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="p-4 bg-green-50 rounded-lg">
+                            <h4 class="font-bold text-lg text-green-800">Forças</h4>
+                            <ul class="list-disc list-inside mt-2 space-y-1 text-sm text-gray-700">
+                                <li>Plataforma de ERP líder no "middle market" (PMEs).</li>
+                                <li>Alto "lock-in": cliente que usa o ERP dificilmente troca o contador.</li>
+                                <li>Ecossistema de contadores parceiros (ContaAzul Pro).</li>
+                            </ul>
+                        </div>
+                        <div class="p-4 bg-red-50 rounded-lg">
+                            <h4 class="font-bold text-lg text-red-800">Fraquezas</h4>
+                            <ul class="list-disc list-inside mt-2 space-y-1 text-sm text-gray-700">
+                                <li>Produto de contabilidade é "acessório" ao ERP, não o core business.</li>
+                                <li>"Overkill" e complexo para o MEI ou PJ individual.</li>
+                                <li>Preço significativamente mais alto (ERP + Contabilidade).</li>
+                            </ul>
+                        </div>
+                        <div class="p-4 bg-blue-50 rounded-lg">
+                            <h4 class="font-bold text-lg text-blue-800">Oportunidades</h4>
+                            <ul class="list-disc list-inside mt-2 space-y-1 text-sm text-gray-700">
+                                <li>Vender a solução de contabilidade para a base de clientes do ERP.</li>
+                                <li>Oferecer BPO financeiro integrado ao ERP.</li>
+                                <li>Usar dados do ERP para insights financeiros/tributários.</li>
+                            </ul>
+                        </div>
+                        <div class="p-4 bg-yellow-50 rounded-lg">
+                            <h4 class="font-bold text-lg text-yellow-800">Ameaças</h4>
+                            <ul class="list-disc list-inside mt-2 space-y-1 text-sm text-gray-700">
+                                <li>Concorrência de ERPs mais modernos (ex: Omie).</li>
+                                <li>Resistência de contadores parceiros em adotar a plataforma "fechada".</li>
+                                <li>Baixa tração no funil de "abertura de empresa" (foco da Contabilizei).</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Seção 5: Recomendações e Roadmap -->
+        <section id="section-recomendacoes" class="space-y-6">
+            <header>
+                <h2 class="text-2xl font-bold text-gray-900">Prioridades Estratégicas e Recomendações</h2>
+                <p class="mt-1 text-gray-600">Com base na análise, estas são as iniciativas priorizadas, hipóteses de diferenciação e riscos regulatórios a monitorar.</p>
+            </header>
+
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Roadmap de Iniciativas Priorizadas</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-600 uppercase tracking-wider">Iniciativa Estratégica</th>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-600 uppercase tracking-wider">Impacto</th>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-600 uppercase tracking-wider">Complexidade</th>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-600 uppercase tracking-wider">Métrica Chave (KPI)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td class="px-4 py-3 font-medium text-gray-800">1. Onboarding via WhatsApp + OCR</td>
+                                <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Alto</span></td>
+                                <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Médio</span></td>
+                                <td class="px-4 py-3 text-gray-600">TTV (Time-to-Value) até 1ª NF emitida</td>
+                            </tr>
+                             <tr>
+                                <td class="px-4 py-3 font-medium text-gray-800">2. Chatbot de IA para Suporte Fiscal N1</td>
+                                <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Alto</span></td>
+                                <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Alto</span></td>
+                                <td class="px-4 py-3 text-gray-600">Taxa de Resolução (1º Contato), % Tickets Humanos</td>
+                            </tr>
+                             <tr>
+                                <td class="px-4 py-3 font-medium text-gray-800">3. Módulo "Pro" de Analytics e Planejamento</td>
+                                <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Médio</span></td>
+                                <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Alto</span></td>
+                                <td class="px-4 py-3 text-gray-600">Taxa de Adoção do Upsell, ARPU</td>
+                            </tr>
+                             <tr>
+                                <td class="px-4 py-3 font-medium text-gray-800">4. Refatoração do Módulo de Cálculo de Guias</td>
+                                <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Médio</span></td>
+                                <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Alto</span></td>
+                                <td class="px-4 py-3 text-gray-600">Nº de Tickets de Suporte (Bugs Fiscais)</td>
+                            </tr>
+                             <tr>
+                                <td class="px-4 py-3 font-medium text-gray-800">5. Integração com Marketplace de Crédito (Antecipação)</td>
+                                <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Baixo</span></td>
+                                <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Médio</span></td>
+                                <td class="px-4 py-3 text-gray-600">Receita de Parceria (Revenue Share)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Hipóteses de Diferenciação (Testes PoC)</h3>
+                    <div class="space-y-4">
+                        <div class="p-4 bg-gray-50 rounded-lg border">
+                            <h4 class="font-semibold text-indigo-700">1. "Contador Concierge" (IA + Humano)</h4>
+                            <p class="text-sm text-gray-600 mt-1"><strong>Problema:</strong> Clientes odeiam suporte N1 robotizado, mas precisam de respostas rápidas. <strong>Solução:</strong> Um "squad" de IA + 1 contador dedicado para clientes "Pro". A IA filtra 80% e o humano audita/resolve os 20% complexos. <strong>Métrica:</strong> NPS de Suporte, Churn do "Tier Pro".</p>
+                        </div>
+                        <div class="p-4 bg-gray-50 rounded-lg border">
+                            <h4 class="font-semibold text-indigo-700">2. Planejamento Tributário Preditivo (Simples)</h4>
+                            <p class="text-sm text-gray-600 mt-1"><strong>Problema:</strong> Clientes do Simples não sabem se estão no anexo correto ou se estourarão o limite. <strong>Solução:</strong> Um dashboard que projeta o faturamento e alerta "Risco de estourar o Simples em X meses" ou "Sua atividade pode se enquadrar no Fator R". <strong>Métrica:</strong> Adoção do Módulo, Retenção.</p>
+                        </div>
+                        <div class="p-4 bg-gray-50 rounded-lg border">
+                            <h4 class="font-semibold text-indigo-700">3. Marketplace de Crédito Instantâneo (Baseado em NF-e)</h4>
+                            <p class="text-sm text-gray-600 mt-1"><strong>Problema:</strong> PMEs precisam de capital de giro rápido e odeiam bancos. <strong>Solução:</strong> Usar o fluxo de NF-e emitidas para pré-aprovar crédito (via parceiro) com 1 clique. <strong>Métrica:</strong> Taxa de Conversão da Oferta, Receita de Parceria.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Riscos Regulatórios e Compliance</h3>
+                     <div class="space-y-4 text-sm">
+                        <div class="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                            <h4 class="font-semibold text-yellow-800">Reforma Tributária (IVA)</h4>
+                            <p class="text-gray-600 mt-1"><strong>Risco:</strong> Mudança massiva nas regras de apuração de impostos. Exigirá refatoração completa dos motores fiscais. <strong>Ação:</strong> Criar "war room" de P&D para monitorar e prototipar os novos cálculos assim que definidos.</p>
+                        </div>
+                         <div class="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                            <h4 class="font-semibold text-yellow-800">LGPD e Uso de IA</h4>
+                            <p class="text-gray-600 mt-1"><strong>Risco:</strong> Treinar IA com dados fiscais e financeiros (sensíveis) dos clientes. Vazamentos ou uso indevido geram multas pesadas. <strong>Ação:</strong> Garantir anonimização total dos dados de treinamento e políticas de "opt-in" claras para features de IA.</p>
+                        </div>
+                         <div class="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                            <h4 class="font-semibold text-yellow-800">eSocial e Obrigações Acessórias</h4>
+                            <p class="text-gray-600 mt-1"><strong>Risco:</strong> Instabilidade e mudanças constantes no eSocial e obrigações da SEFAZ. <strong>Ação:</strong> Manter time de integração dedicado e sistema de "feature flags" para atualizações rápidas de compliance.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="text-center py-6 mt-10 border-t border-gray-200">
+        <p class="text-xs text-gray-500">Relatório Interativo de Benchmarking v1.0 | Outubro 2025</p>
+        <p class="text-xs text-gray-500 mt-1">Análise baseada em fontes públicas, dados de redes sociais e estimativas de mercado. Metodologia completa no apêndice do relatório.</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- Database Simulado (Baseado no Relatório) ---
+            const appData = {
+                metrics: {
+                    contabilizei: { ra: 8.4, traffic: 100, maturity: 4.5, sentiment: 4.0 },
+                    agilize: { ra: 9.1, traffic: 45, maturity: 4.2, sentiment: 4.8 },
+                    conube: { ra: 7.8, traffic: 30, maturity: 3.0, sentiment: 3.5 },
+                    contaazul: { ra: 7.5, traffic: 60, maturity: 3.5, sentiment: 3.0 },
+                    meucontador: { ra: 8.8, traffic: 25, maturity: 2.5, sentiment: 4.2 },
+                    contdigital: { ra: 7.0, traffic: 10, maturity: 1.5, sentiment: 2.5 },
+                },
+                features: {
+                    contabilizei: {
+                        name: "Contabilizei",
+                        baseline: true,
+                        price: "A partir de R$ 119/mês (Serviços)",
+                        maturityScores: [5, 4, 5, 4, 4, 3, 3, 4],
+                        items: [
+                            { name: "Abertura de Empresa Online", level: "Avançado", note: "Funil mais rápido do mercado." },
+                            { name: "Planos por Assinatura", level: "Avançado", note: "Separação clara entre Serviços e Comércio." },
+                            { name: "Emissão de NF-e", level: "Intermediário", note: "Integrado, mas com relatos de instabilidade." },
+                            { name: "Folha de Pagamento (CLT/PJ)", level: "Avançado", note: "Gestão completa de Pró-labore e CLT." },
+                            { name: "Integração Bancária", level: "Avançado", note: "Conciliação automática com os maiores bancos." },
+                            { name: "Painéis e Analytics", level: "Intermediário", note: "Dashboards básicos, sem insights proativos." },
+                            { name: "Automação de Guias", level: "Intermediário", note: "Automatizado, mas fonte de bugs (Reclame Aqui)." },
+                            { name: "Suporte (Chat/Telefone)", level: "Básico", note: "Suporte N1 lento, maior ponto de reclamação." },
+                            { name: "Recursos de IA", level: "Intermediário", note: "Chatbot N1 (básico) e automação interna." },
+                            { name: "Marketplace Financeiro", level: "Avançado", note: "Forte com Conta PJ integrada e parceiros." }
+                        ]
+                    },
+                    agilize: {
+                        name: "Agilize",
+                        price: "A partir de R$ 149/mês (Serviços)",
+                        maturityScores: [4, 4, 4, 4, 4, 3, 4, 5, 2, 2],
+                        items: [
+                            { name: "Abertura de Empresa Online", level: "Avançado", note: "Processo 100% digital." },
+                            { name: "Planos por Assinatura", level: "Avançado", note: "Foco claro em PJs de Serviços (Médicos, TI)." },
+                            { name: "Emissão de NF-e", level: "Avançado", note: "Plataforma estável e bem avaliada." },
+                            { name: "Folha de Pagamento (CLT/PJ)", level: "Avançado", note: "Completo para gestão de funcionários." },
+                            { name: "Integração Bancária", level: "Avançado", note: "Conciliação automática." },
+                            { name: "Painéis e Analytics", level: "Intermediário", note: "Dashboards financeiros padrão." },
+                            { name: "Automação de Guias", level: "Avançado", note: "Poucos relatos de erros." },
+                            { name: "Suporte (Chat/Telefone)", level: "Avançado", note: "Diferencial via WhatsApp, muito elogiado (RA 9.1)." },
+                            { name: "Recursos de IA", level: "Básico", note: "Não é um foco de marketing atual." },
+                            { name: "Marketplace Financeiro", level: "Básico", note: "Menos robusto que o líder." }
+                        ]
+                    },
+                    conube: {
+                        name: "Conube (agora parte da Dattos)",
+                        price: "Sob consulta (Mudança de modelo)",
+                        maturityScores: [3, 3, 3, 3, 3, 3, 3, 3, 1, 1],
+                        items: [
+                            { name: "Abertura de Empresa Online", level: "Intermediário", note: "Foco mudou pós-aquisição pela Dattos." },
+                            { name: "Planos por Assinatura", level: "Intermediário", note: "Modelo de negócio em transição para B2B/Mid-market." },
+                            { name: "Emissão de NF-e", level: "Intermediário", note: "Funcionalidade padrão." },
+                            { name: "Folha de Pagamento (CLT/PJ)", level: "Intermediário", note: "Atende o básico." },
+                            { name: "Integração Bancária", level: "Intermediário", note: "Disponível." },
+                            { name: "Painéis e Analytics", level: "Intermediário", note: "Foco em relatórios contábeis." },
+                            { name: "Automação de Guias", level: "Intermediário", note: "Plataforma legada." }, // CORRIGIDO: Removido 'Am:'
+                            { name: "Suporte (Chat/Telefone)", level: "Intermediário", note: "Sem destaque positivo ou negativo." },
+                            { name: "Recursos de IA", level: "Básico", note: "Inexistente." },
+                            { name: "Marketplace Financeiro", level: "Básico", note: "Inexistente." }
+                        ]
+                    },
+                    contaazul: {
+                        name: "ContaAzul",
+                        price: "ERP (R$ 150+) + Contabilidade (R$ 100+)",
+                        maturityScores: [2, 3, 5, 4, 5, 5, 4, 4, 3, 4],
+                        items: [
+                            { name: "Abertura de Empresa Online", level: "Básico", note: "Não é o foco; depende de contadores parceiros." },
+                            { name: "Planos por Assinatura", level: "Intermediário", note: "Venda casada (ERP + Contabilidade)." },
+                            { name: "Emissão de NF-e", level: "Avançado", note: "Core do produto ERP, muito robusto." },
+                            { name: "Folha de Pagamento (CLT/PJ)", level: "Avançado", note: "Integrado ao ERP e eSocial." },
+                            { name: "Integração Bancária", level: "Avançado", note: "Core do ERP, excelente conciliação." },
+                            { name: "Painéis e Analytics", level: "Avançado", note: "Diferencial (Fluxo de Caixa, DRE Gerencial)." },
+                            { name: "Automação de Guias", level: "Avançado", note: "Integrado via 'ContaAzul Pro' (rede de contadores)." },
+                            { name: "Suporte (Chat/Telefone)", level: "Avançado", note: "Bom suporte, focado no contador e no dono do ERP." },
+                            { name: "Recursos de IA", level: "Intermediário", note: "IA para preenchimento e conciliação." },
+                            { name: "Marketplace Financeiro", level: "Avançado", note: "Boas integrações de crédito e cobrança." }
+                        ]
+                    },
+                    meucontador: {
+                        name: "Meu Contador Online",
+                        price: "A partir de R$ 49,90/mês (Foco em preço)",
+                        maturityScores: [3, 4, 2, 2, 2, 1, 2, 3, 1, 1],
+                        items: [
+                            { name: "Abertura de Empresa Online", level: "Intermediário", note: "Oferecido, mas processo manual." },
+                            { name: "Planos por Assinatura", level: "Avançado", note: "Planos 'low cost' agressivos." },
+                            { name: "Emissão de NF-e", level: "Básico", note: "Emissor próprio, muito simples." },
+                            { name: "Folha de Pagamento (CLT/PJ)", level: "Básico", note: "Apenas Pró-labore; CLT é cobrado à parte." },
+                            { name: "Integração Bancária", level: "Básico", note: "Apenas importação de extrato (manual)." },
+                            { name: "Painéis e Analytics", level: "Básico", note: "Inexistente." },
+                            { name: "Automação de Guias", level: "Básico", note: "Geração simples de DAS." },
+                            { name: "Suporte (Chat/Telefone)", level: "Intermediário", note: "Surpreendentemente bem avaliado (RA 8.8)." },
+                            { name: "Recursos de IA", level: "Básico", note: "Inexistente." },
+                            { name: "Marketplace Financeiro", level: "Básico", note: "Inexistente." }
+                        ]
+                    },
+                    contdigital: {
+                        name: "ContDigital",
+                        price: "A partir de R$ 89/mês",
+                        maturityScores: [2, 2, 2, 1, 1, 1, 2, 2, 1, 1],
+                        items: [
+                            { name: "Abertura de Empresa Online", level: "Básico", note: "Processo manual." },
+                            { name: "Planos por Assinatura", level: "Intermediário", note: "Planos simples." },
+                            { name: "Emissão de NF-e", level: "Básico", note: "Não possui emissor próprio (depende de parceiro)." },
+                            { name: "Folha de Pagamento (CLT/PJ)", level: "Básico", note: "Apenas Pró-labore." },
+                            { name: "Integração Bancária", level: "Básico", note: "Manual." },
+                            { name: "Painéis e Analytics", level: "Básico", note: "Inexistente." },
+                            { name: "Automação de Guias", level: "Básico", note: "Geração de DAS." },
+                            { name: "Suporte (Chat/Telefone)", level: "Básico", note: "Baixo volume, sem dados." },
+                            { name: "Recursos de IA", level: "Básico", note: "Inexistente." },
+                            { name: "Marketplace Financeiro", level: "Básico", note: "Inexistente." }
+                        ]
+                    }
+                },
+                sentiment: {
+                    complaintThemes: [
+                        { theme: "Atendimento Lento/Robótico", mentions: 120 },
+                        { theme: "Bugs (Cálculo de Guias)", mentions: 85 },
+                        { theme: "Preço / Cobrança Indevida", mentions: 60 },
+                        { theme: "Dificuldade de Uso (UX)", mentions: 45 },
+                        { theme: "Erro na Abertura de Empresa", mentions: 30 },
+                        { theme: "Demora na Resposta (Humano)", mentions: 75 },
+                    ],
+                    cards: [
+                        { id: "c1", type: "elogio", competitor: "contabilizei", theme: "Preço", text: "Ainda é o preço mais barato para abrir minha empresa e manter o CNPJ. Vale a pena." },
+                        { id: "c2", type: "elogio", competitor: "contabilizei", theme: "Facilidade (Abertura)", text: "O processo de abertura foi todo online e muito rápido, não precisei me preocupar com nada." },
+                        { id: "c3", type: "reclamação", competitor: "contabilizei", theme: "Atendimento", text: "Estou há 3 dias esperando um humano me responder no chat sobre um erro na minha guia. O robô é inútil." },
+                        { id: "c4", type: "reclamação", competitor: "contabilizei", theme: "Bugs Fiscais", text: "Calcularam meu imposto errado e agora tenho que pagar multa. Disseram que foi 'instabilidade'." },
+                        { id: "a1", type: "elogio", competitor: "agilize", theme: "Atendimento", text: "Fui para a Agilize e a diferença é gritante. Me respondem no WhatsApp em minutos e resolvem de verdade." },
+                        { id: "a2", type: "elogio", competitor: "agilize", theme: "Plataforma", text: "A plataforma deles é muito estável, nunca tive problema com emissão de nota ou cálculo de imposto." },
+                        { id: "a3", type: "reclamação", competitor: "agilize", theme: "Preço", text: "É um pouco mais caro que a Contabilizei, mas pelo atendimento, por enquanto compensa." },
+                        { id: "ca1", type: "elogio", competitor: "contaazul", theme: "Integração ERP", text: "Ter o financeiro (ERP) e a contabilidade no mesmo lugar é perfeito. O DRE sai automático." },
+                        { id: "ca2", type: "reclamação", competitor: "contaazul", theme: "Complexidade", text: "É muito complexo para mim que sou PJ sozinho. Muita função que não uso, e o preço é alto." }
+                    ]
+                },
+                featureRadarLabels: ["Abertura", "Planos", "NF-e", "Folha", "Bancos", "Analytics", "Guias", "Suporte", "IA", "Marketplace"]
+            };
+
+            // --- Estado da Aplicação ---
+            let currentState = {
+                activeSection: 'visao-geral',
+                activeFeatureCompetitor: 'contabilizei',
+                activeSentimentFilter: 'todos',
+                activeSwotCompetitor: 'contabilizei'
+            };
+
+            // --- Referências de DOM ---
+            const mainNav = document.getElementById('main-nav');
+            const mainNavMobile = document.getElementById('main-nav-mobile');
+            const sections = document.querySelectorAll('main section');
+            const featureTabs = document.getElementById('feature-tabs');
+            const featureTitle = document.getElementById('feature-title');
+            const featureList = document.getElementById('feature-details-list');
+            const sentimentFilter = document.getElementById('sentiment-filter');
+            const sentimentElogios = document.getElementById('sentiment-cards-elogios');
+            const sentimentReclamacoes = document.getElementById('sentiment-cards-reclama-es');
+            const swotTabs = document.getElementById('swot-tabs');
+            const swotContainer = document.getElementById('swot-content-container');
+
+            // --- Instâncias dos Gráficos (para destruir) ---
+            let marketPosChartInstance = null;
+            let featureRadarInstance = null;
+            let sentimentBarInstance = null;
+
+            // --- Funções de Renderização de Gráficos ---
+
+            function renderMarketPosChart() {
+                if (marketPosChartInstance) marketPosChartInstance.destroy();
+                const ctx = document.getElementById('marketPosChart').getContext('2d');
+                
+                const datasets = Object.keys(appData.metrics).map(key => {
+                    const data = appData.metrics[key];
+                    return {
+                        label: appData.features[key]?.name || key,
+                        data: [{
+                            x: data.maturity,
+                            y: data.sentiment,
+                            r: data.traffic / 5 
+                        }],
+                        backgroundColor: `rgba(${Math.random() * 200 + 50}, ${Math.random() * 150}, ${Math.random() * 200 + 50}, 0.6)`,
+                        borderColor: `rgba(${Math.random() * 200 + 50}, ${Math.random() * 150}, ${Math.random() * 200 + 50}, 1)`,
+                    };
+                });
+
+                marketPosChartInstance = new Chart(ctx, {
+                    type: 'bubble',
+                    data: { datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                title: { display: true, text: 'Maturidade da Plataforma (0-5)' },
+                                min: 1, max: 5
+                            },
+                            y: {
+                                title: { display: true, text: 'Sentimento do Cliente (RA/Opinião)' },
+                                min: 2, max: 5
+                            }
+                        },
+                        plugins: {
+                            legend: { display: true, position: 'bottom' },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const d = context.raw;
+                                        return `${context.dataset.label}: (Maturidade: ${d.x}, Sentimento: ${d.y}, Tráfego: ${d.r * 5})`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            function renderFeatureRadarChart(competitorId) {
+                if (featureRadarInstance) featureRadarInstance.destroy();
+                const ctx = document.getElementById('featureRadarChart').getContext('2d');
+                
+                const baselineData = appData.features['contabilizei'].maturityScores;
+                const competitorData = appData.features[competitorId].maturityScores;
+
+                featureRadarInstance = new Chart(ctx, {
+                    type: 'radar',
+                    data: {
+                        labels: appData.featureRadarLabels,
+                        datasets: [
+                            {
+                                label: appData.features[competitorId].name,
+                                data: competitorData,
+                                fill: true,
+                                backgroundColor: 'rgba(79, 70, 229, 0.2)',
+                                borderColor: 'rgba(79, 70, 229, 1)',
+                                pointBackgroundColor: 'rgba(79, 70, 229, 1)',
+                            },
+                            {
+                                label: 'Contabilizei (Baseline)',
+                                data: baselineData,
+                                fill: true,
+                                backgroundColor: 'rgba(209, 213, 219, 0.2)',
+                                borderColor: 'rgba(107, 114, 128, 1)',
+                                pointBackgroundColor: 'rgba(107, 114, 128, 1)',
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            r: {
+                                beginAtZero: true,
+                                min: 0,
+                                max: 5,
+                                ticks: { stepSize: 1 }
+                            }
+                        },
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        }
+                    }
+                });
+            }
+
+            function renderSentimentBarChart() {
+                if (sentimentBarInstance) sentimentBarInstance.destroy();
+                const ctx = document.getElementById('sentimentBarChart').getContext('2d');
+                
+                const data = appData.sentiment.complaintThemes
+                    .sort((a, b) => b.mentions - a.mentions);
+
+                sentimentBarInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.map(d => d.theme),
+                        datasets: [{
+                            label: 'Nº de Menções',
+                            data: data.map(d => d.mentions),
+                            backgroundColor: 'rgba(220, 38, 38, 0.6)',
+                            borderColor: 'rgba(220, 38, 38, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            x: { beginAtZero: true }
+                        }
+                    }
+                });
+            }
+
+            // --- Funções de Atualização de UI ---
+
+            function updateNavigation(selectedSection) {
+                currentState.activeSection = selectedSection;
+                
+                sections.forEach(section => {
+                    section.classList.toggle('active', section.id === `section-${selectedSection}`);
+                });
+
+                [mainNav, mainNavMobile].forEach(nav => {
+                    nav.querySelectorAll('a').forEach(link => {
+                        link.classList.toggle('active', link.dataset.section === selectedSection);
+                    });
+                });
+            }
+
+            function updateFeatureView(competitorId) {
+                currentState.activeFeatureCompetitor = competitorId;
+                const data = appData.features[competitorId];
+
+                featureTabs.querySelectorAll('a').forEach(tab => {
+                    tab.classList.toggle('active', tab.dataset.competitor === competitorId);
+                });
+
+                featureTitle.textContent = `Perfil de Features: ${data.name}`;
+                
+                let html = `<p class="text-sm font-semibold text-gray-800 mb-3">${data.price}</p>`;
+                html += data.items.map(item => `
+                    <div class="py-2 border-b border-gray-100">
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium text-gray-700">${item.name}</span>
+                            <span class="text-xs font-semibold px-2 py-0.5 rounded-full 
+                                ${item.level === 'Avançado' ? 'bg-green-100 text-green-800' : 
+                                  item.level === 'Intermediário' ? 'bg-yellow-100 text-yellow-800' : 
+                                  'bg-red-100 text-red-800'}">
+                                ${item.level}
+                            </span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">${item.note}</p>
+                    </div>
+                `).join('');
+                featureList.innerHTML = html;
+
+                renderFeatureRadarChart(competitorId);
+            }
+
+            function updateSentimentView(filter) {
+                currentState.activeSentimentFilter = filter;
+                
+                const filteredCards = appData.sentiment.cards.filter(card => 
+                    filter === 'todos' || card.competitor === filter
+                );
+
+                const elogiosHtml = filteredCards
+                    .filter(c => c.type === 'elogio')
+                    .map(c => `
+                        <div class="p-3 bg-green-50 rounded-lg border border-green-200">
+                            <span class="text-xs font-semibold text-green-700">[${appData.features[c.competitor].name}] - ${c.theme}</span>
+                            <p class="text-sm text-gray-700 mt-1">"${c.text}"</p>
+                        </div>
+                    `).join('') || '<p class="text-sm text-gray-500">Nenhum elogio encontrado para este filtro.</p>';
+                
+                const reclamacoesHtml = filteredCards
+                    .filter(c => c.type === 'reclamação')
+                    .map(c => `
+                         <div class="p-3 bg-red-50 rounded-lg border border-red-200">
+                            <span class="text-xs font-semibold text-red-700">[${appData.features[c.competitor].name}] - ${c.theme}</span>
+                            <p class="text-sm text-gray-700 mt-1">"${c.text}"</p>
+                        </div>
+                    `).join('') || '<p class="text-sm text-gray-500">Nenhuma reclamação encontrada para este filtro.</p>';
+
+                sentimentElogios.innerHTML = elogiosHtml;
+                sentimentReclamacoes.innerHTML = reclamacoesHtml;
+            }
+            
+            function updateSwotView(competitorId) {
+                currentState.activeSwotCompetitor = competitorId;
+
+                swotTabs.querySelectorAll('a').forEach(tab => {
+                    tab.classList.toggle('active', tab.dataset.competitor === competitorId);
+                });
+                
+                swotContainer.querySelectorAll('.swot-content').forEach(content => {
+                    content.classList.toggle('active', content.id === `swot-${competitorId}`);
+                    content.classList.toggle('hidden', content.id !== `swot-${competitorId}`);
+                });
+            }
+
+            // --- Event Listeners ---
+            function handleNavClick(e) {
+                if (e.target.tagName === 'A' && e.target.dataset.section) {
+                    e.preventDefault();
+                    updateNavigation(e.target.dataset.section);
+                }
+            }
+            mainNav.addEventListener('click', handleNavClick);
+            mainNavMobile.addEventListener('click', handleNavClick);
+
+            featureTabs.addEventListener('click', (e) => {
+                if (e.target.tagName === 'A' && e.target.dataset.competitor) {
+                    e.preventDefault();
+                    updateFeatureView(e.target.dataset.competitor);
+                }
+            });
+            
+            swotTabs.addEventListener('click', (e) => {
+                if (e.target.tagName === 'A' && e.target.dataset.competitor) {
+                    e.preventDefault();
+                    updateSwotView(e.target.dataset.competitor);
+                }
+            });
+
+            sentimentFilter.addEventListener('change', (e) => {
+                updateSentimentView(e.target.value);
+            });
+
+            // --- Inicialização ---
+            function init() {
+                renderMarketPosChart();
+                renderSentimentBarChart();
+                
+                updateNavigation('visao-geral');
+                updateFeatureView('contabilizei');
+                updateSentimentView('todos');
+                updateSwotView('contabilizei');
+            }
+
+            init();
+        });
+    </script>
+</body>
+</html>
